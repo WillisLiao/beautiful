@@ -1,102 +1,180 @@
-''' 請同學以「天瓏書局」為目標，讓使用者一次輸入 5 種不同的查詢關鍵字，例如:
-講理, Python, Java, Database, C++。程式可以經由網頁爬蟲程式抓取
-● 請分別以傳統的爬蟲方式查詢，再以多執行緒的方式進行查詢，並分別計算其
-所花費的時間分別是多少
-● 下列網址為 天瓏書局的網址最後面的 Java 就是使用者輸入的 查詢關鍵字
-● https://www.tenlong.com.tw/search?utf8=%E2%9C%93&keyword=Java
-● 下頁投影片是 查詢結果的頁面，請同學用爬蟲取書籍的「書名」及「出版日期」
-資料
-● 請用 MySQL 建立一個資料表，欄位有「id」、「title」、「publish_date」並將前小題
-得到的結果存入到 MySQL 的資料表中
-● 程式結束時要能呈現綜上操作程式執行網路爬蟲並完成寫入到資料庫總共花
-了多少時間'''
-
-
-
-
-#取得網頁的html
 import requests
 from bs4 import BeautifulSoup 
 import re
 import time
 import concurrent.futures as cf
+import mysql.connector as myconn
+import pandas as pd
+
+#取得網頁的html
 url = "https://www.tenlong.com.tw/search?utf8=%E2%9C%93&keyword=Java"
 
 result = requests.get(url)
 doc = BeautifulSoup(result.text, "html.parser")
 print(doc.prettify)
-
-#while True:
- #   action  = input("Search: 1\tGet title and publish date: 2\tInsert to database: 3")
-
-
-
-#search keywords
-
-kw1, kw2, kw3, kw4, kw5 = map(input('type in 5 keywords').split())
-kwList = [kw1, kw2, kw3, kw4, kw5]
-
-start_time = time.time()
-
-
-keywords = doc.find_all()
-for rows in keywords:
-    for i in range(5):
-        if kwList[i] in str(rows.string):
-                print(rows.string)
-end_time = time.time()
-
-if len(keywords) == 0:
-        print('no result found, please type in another keyword')
-
-print(f'search time: {end_time - start_time}')
+print('html successfully requested!')
+while True:
+    action  = input("Search: 1   Get title, publish date and insert to database: 2\n: ")
 
 
 
-with cf.ThreadPoolExecutor(max_workers=10) as executor:
-    executor.map()
+    #search keywords
+    if action=="1":
 
+        kw1, kw2, kw3, kw4, kw5 = map(str, input('type in 5 keywords(case sensitive): ').split())
+        kwList = [kw1, kw2, kw3, kw4, kw5]
 
+        start_time = time.time()
 
+        def search(keyword):
 
+            keywords = doc.find_all()
+            for rows in keywords:
+                for i in range(5):
+                    if keyword in str(rows.string):
+                            print(rows.string)
+                            
+            
 
+            if len(keywords) == 0:
+                    print('no result found, please type in another keyword')
+            
+            
+        
+        keywords = doc.find_all()
+        for rows in keywords:
+            for i in range(5):
+                if kwList[i] in str(rows.string):
+                        print(rows.string)
+                        
+        end_time = time.time()
 
+        if len(keywords) == 0:
+                print('no result found, please type in another keyword')
 
+        print('\n')
 
+        start_time2 = time.time()
+        with cf.ThreadPoolExecutor(max_workers=100) as executor:
+            executor.map(search, kwList)
+        end_time2 = time.time()
 
-#書名
-name_list = []
-tags = doc.find_all(['a'], class_="cover w-full")
-for i in range(len(tags)):
-    tags = doc.find_all(['a'], class_="cover w-full")[i]
-    tags2 = tags.find('img')
-
-    print(re.search(r'"(.*?)"', str(tags2)).group(1))
-    name_list.append(re.search(r'"(.*?)"', str(tags2)).group(1))
-print(name_list)
-
-
-
+        print(f'Single threaded search time: {end_time - start_time}')
+        print(f'Multi threaded search time: {end_time2 - start_time2}')
+        
 
 
 
 
 
 
+    elif action=='2':
+        start_time = time.time()
+        #書名
+        name_list = []
+        tags = doc.find_all(['a'], class_="cover w-full")
+        for i in range(len(tags)):
+            tags = doc.find_all(['a'], class_="cover w-full")[i]
+            tags2 = tags.find('img')
 
-#出版日期
-dates = doc.find_all(text = re.compile(r'出版日期.*'))
-
-n=0
-print(len(dates))
-for i in range(31):
-
-    datesp = dates[i].parent
+            print(re.search(r'"(.*?)"', str(tags2)).group(1))
+            name_list.append(re.search(r'"(.*?)"', str(tags2)).group(1))
+        
 
 
-    if '-' in str(datesp.string):
-        i+=1
-        print(datesp.string)
+
+        #出版日期
+        dates = doc.find_all(text = re.compile(r'出版日期.*'))
+
+        n=0
+        pbdateList = []
+        print(len(dates))
+        for i in range(31):
+
+            datesp = dates[i].parent
+
+
+            if '-' in str(datesp.string):
+                i+=1
+                print(datesp.string)
+                pbdateList.append(datesp.string.strip('出版日期:'))
+        print(name_list)
+        print(pbdateList)
+        print('\nGot title & publish_date!\n')
+    
+
+
+
+
+        dbConn = myconn.connect(
+                        host = 'localhost',
+                        user = 'aquser',
+                        password = '!a000000',
+                        #database = 'aqD1047316'
+                        
+            )
+        my_cursor = dbConn.cursor()
+        my_cursor.execute('CREATE DATABASE IF NOT EXISTS aqD1047316')
+        dbConn = myconn.connect(
+                        host = 'localhost',
+                        user = 'aquser',
+                        password = '!a000000',
+                        database = 'aqD1047316'
+                        
+            )
+        
+        
+        print('creating table....')
+
+        sql = '''CREATE TABLE Books(
+                        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                        title varchar(255) ,
+                        publish_date varchar(255) 
+     
+                        )
+                        '''
+
+        my_cursor = dbConn.cursor()   
+        my_cursor.execute('DROP TABLE IF EXISTS Books')                                 
+        my_cursor.execute(sql)
+        print('Table is created....')
+        my_cursor.execute('SHOW TABLES')
+
+        print('Tables: ')
+        for table in my_cursor:
+                print(table[0])
+
+
+        dbConn = myconn.connect(
+                        host = 'localhost',
+                        user = 'aquser',
+                        password = '!a000000',
+                        database = 'aqD1047316'
+                        
+            )
+        
+        my_cursor = dbConn.cursor(buffered=True)       #buffered = True 解決 unread results Error                      
+        my_cursor.execute('SHOW TABLES')
+
+        #loop through the data frame
+        for data in name_list:
+            sql2 = '''INSERT IGNORE INTO aqD1047316.Books( title ) VALUES(%s)'''
+            my_cursor.execute(sql2)
+            print('Record inserted')
+            dbConn.commit()
+
+        for data in pbdateList:
+            sql3 = '''INSERT IGNORE INTO aqD1047316.Books( publish_date ) VALUES(%s)'''
+            my_cursor.execute(sql3)
+            print('Record inserted')
+            dbConn.commit()
+
+        end_time = time.time()
+        print(f'took {start_time - end_time} seconds')
+        
+
+    elif action=='stop':
+        break
 
 
 
