@@ -4,11 +4,11 @@ import re
 import time
 import concurrent.futures as cf
 import mysql.connector as myconn
-import pandas as pd
+
 
 #取得網頁的html
 print('\nrequesting for html........\n')
-url = "https://www.tenlong.com.tw/search?utf8=%E2%9C%93&keyword=Java"
+url = "https://www.tenlong.com.tw/search?utf8=%E2%9C%93&keyword=人"
 
 result = requests.get(url)
 doc = BeautifulSoup(result.text, "html.parser")
@@ -31,7 +31,7 @@ while True:
             keywords = doc.find_all()
             for rows in keywords:
                 for i in range(5):
-                    if keyword in str(rows.string) and 'Rollbar' not in str(rows.string):
+                    if keyword in str(rows.string) and 'Rollbar' not in str(rows.string) :
                         print(rows.string)
                             
             
@@ -44,7 +44,7 @@ while True:
         keywords = doc.find_all()
         for rows in keywords:
             for i in range(5):
-                if kwList[i] in str(rows.string) and 'Rollbar' not in str(rows.string):
+                if kwList[i] in str(rows.string) and 'Rollbar' not in str(rows.string) :
                     print(rows.string)
                         
         end_time = time.time()
@@ -55,7 +55,7 @@ while True:
         print('\n')
 
         start_time2 = time.time()
-        with cf.ThreadPoolExecutor(max_workers=100) as executor:
+        with cf.ThreadPoolExecutor(max_workers=1000) as executor:
             executor.map(search, kwList)
         end_time2 = time.time()
 
@@ -76,9 +76,9 @@ while True:
         for i in range(len(tags)):
             tags = doc.find_all(['a'], class_="cover w-full")[i]
             tags2 = tags.find('img')
+            a = str(re.search(r'"(.*?)"', str(tags2)).group(1)).replace(':','')
 
-
-            name_list.append(str(re.search(r'"(.*?)"', str(tags2)).group(1)).replace(':',''))
+            name_list.append(a.replace("'", ''))
         
 
 
@@ -98,7 +98,7 @@ while True:
                 i+=1
 
                 pbdateList.append(str(datesp.string.replace('出版日期：',''))) #冒號為全形
-        time.sleep(2)
+
         print('\nGot title & publish_date!\n')
     
 
@@ -143,7 +143,7 @@ while True:
         print('Tables: ')
         for table in my_cursor:
                 print(table[0])
-        time.sleep(3.5)
+        time.sleep(2)
 
 
         dbConn = myconn.connect(
@@ -158,7 +158,8 @@ while True:
         my_cursor.execute('SHOW TABLES')
 
         #loop through the data frame
-
+        print(name_list)
+        print(pbdateList)
         for i in range(len(name_list)):
 
             sql4 = f'''INSERT IGNORE INTO aqD1047316.Books( title, publish_date) VALUES('{str(name_list[i])}','{str(pbdateList[i])}')'''
@@ -167,7 +168,7 @@ while True:
             dbConn.commit()
 
         end_time = time.time()
-        print(f'\ntook {end_time - start_time - 11.5} seconds\n')
+        print(f'\ntook {end_time - start_time - 8} seconds\n')
 
     elif action=='stop':
         break
