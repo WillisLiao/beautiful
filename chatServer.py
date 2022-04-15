@@ -25,7 +25,7 @@ def send(sock, addr):
             break
 
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-host = '10.22.98.67'
+host = '10.22.75.174'
 port = 2022
 server = (host, port)
 s.bind(server)
